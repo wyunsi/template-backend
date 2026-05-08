@@ -20,7 +20,7 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=dev-${{ github.run_number }}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "tag=dev-${{ '{{' }} github.run_number {{ '}}' }}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx

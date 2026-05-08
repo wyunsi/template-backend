@@ -1,4 +1,5 @@
 _min_copier_version: "9.0"
+_templates_suffix: ""
 _message_after_copy: |
   ✅ 项目「{{ project_name }}」已生成！
 
