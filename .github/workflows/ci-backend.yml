@@ -1,0 +1,75 @@
+name: CI · Backend
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["backend/**"]
+  pull_request:
+    branches: [main]
+    paths: ["backend/**"]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  ci:
+    name: Lint / Test / Scan
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: app_test
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:8
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      APP_ENV: test
+      LICENSE_KEY: lk_test
+      DEPLOYMENT_ID: ci-test-001
+      APP_SECRET_KEY: testsecretkey0000000000000000000000000000000000000000000000000000
+      DB_URL: postgresql+asyncpg://app:testpass@localhost:5432/app_test
+      CELERY_BROKER_URL: redis://localhost:6379/1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Format check (ruff)
+        run: uv run ruff check .
+
+      - name: Type check (mypy)
+        run: uv run mypy app/ core/ --ignore-missing-imports
+
+      - name: Unit tests
+        run: uv run pytest tests/ -v --cov=app --cov-report=term-missing
+
+      - name: Security scan (bandit)
+        run: uv run bandit -r app/ core/ -c pyproject.toml
+
+      - name: Dependency audit (pip-audit)
+        run: uv run pip-audit

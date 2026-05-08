@@ -1,0 +1,57 @@
+name: CD · Backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**"]
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version tag
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dev-${{ github.run_number }}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to private registry
+        run: |
+          echo "${{ '{{' }} secrets.REGISTRY_PASSWORD {{ '}}' }}" | \
+            docker login {{ registry_url }} -u ci-bot --password-stdin
+
+      - name: Build and push · server
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile.server
+          push: true
+          tags: |
+            {{ registry_url }}/{{ org_name }}/{{ project_name }}-server:${{ '{{' }} steps.version.outputs.tag {{ '}}' }}
+            {{ registry_url }}/{{ org_name }}/{{ project_name }}-server:latest
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,scope=server,mode=max
+
+      - name: Build and push · worker
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile.worker
+          push: true
+          tags: |
+            {{ registry_url }}/{{ org_name }}/{{ project_name }}-worker:${{ '{{' }} steps.version.outputs.tag {{ '}}' }}
+            {{ registry_url }}/{{ org_name }}/{{ project_name }}-worker:latest
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,scope=worker,mode=max

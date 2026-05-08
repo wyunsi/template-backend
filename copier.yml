@@ -1,0 +1,29 @@
+_min_copier_version: "9.0"
+_message_after_copy: |
+  ✅ 项目「{{ project_name }}」已生成！
+
+  后续步骤：
+    1. cd {{ project_name }}
+    2. git init && git add . && git commit -m "init: from template"
+    3. 在 GitHub 创建同名仓库并 push
+    4. 添加 GitHub Secret：REGISTRY_PASSWORD = ci-bot 密码
+    5. cd backend && uv sync --extra dev
+
+project_name:
+  type: str
+  help: "项目名称（英文小写，连字符分隔，如 my-project）"
+
+org_name:
+  type: str
+  help: "镜像组织名（如 wyunsi）"
+  default: wyunsi
+
+registry_url:
+  type: str
+  help: "私有 Registry 地址"
+  default: registry.touks.eu.org
+
+python_version:
+  type: str
+  help: "Python 版本"
+  default: "3.13"

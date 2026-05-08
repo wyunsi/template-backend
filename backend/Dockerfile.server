@@ -1,0 +1,41 @@
+# ── Stage 1: builder ─────────────────────────────────────────────────────────
+# Install all Python dependencies, produce wheel cache (including Cython)
+FROM python:3.13-slim AS builder
+WORKDIR /build
+RUN pip install --upgrade pip
+COPY pyproject.toml .
+RUN pip wheel --no-cache-dir -w /wheels . && \
+    pip wheel --no-cache-dir -w /wheels "cython>=3" "setuptools>=70"
+
+# ── Stage 2: compiler ────────────────────────────────────────────────────────
+# Compile core/security/ and core/license/ to .so, delete source
+FROM python:3.13-slim AS compiler
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libc6-dev && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl
+COPY core/ ./core/
+COPY setup_cython.py .
+RUN python setup_cython.py build_ext --inplace && \
+    find core/security core/license -name "*.py" \
+      -not -name "__init__.py" -delete && \
+    find core/ -name "*.c" -delete
+
+# ── Stage 3: runtime-server ──────────────────────────────────────────────────
+# Final image: only runtime content, no source, no build tools
+FROM python:3.13-slim AS runtime
+WORKDIR /app
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl && rm -rf /wheels
+# Compiled core/ (.so, no sensitive .py source)
+COPY --from=compiler /app/core ./core
+# FastAPI application code
+COPY app/ ./app/
+# Database migrations (server only)
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+EXPOSE 8080
+# Run migrations then start API
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080"]

@@ -1,0 +1,32 @@
+# 前端 CI — 预留，前端就绪后取消注释
+#
+# name: CI · Frontend
+#
+# on:
+#   push:
+#     branches: ["**"]
+#     paths: ["frontend/**"]
+#   pull_request:
+#     branches: [main]
+#     paths: ["frontend/**"]
+#
+# defaults:
+#   run:
+#     working-directory: frontend
+#
+# jobs:
+#   ci:
+#     name: Lint / Test / Build
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: "22"
+#           cache: npm
+#           cache-dependency-path: frontend/package-lock.json
+#       - run: npm ci
+#       - run: npm run lint
+#       - run: npm run type-check
+#       - run: npm run test
+#       - run: npm run build
